@@ -1,0 +1,7 @@
+.git
+.github
+.gitignore
+.hadolint.yaml
+LICENSE
+README.md
+*.md
