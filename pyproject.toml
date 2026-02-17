@@ -1,0 +1,32 @@
+[project]
+name = "mkl-starter-kit"
+version = "0.1.0"
+description = "mkl-starter-kit"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy~=2.4.1",
+    "scipy~=1.17.0",
+]
+
+[dependency-groups]
+build = [
+    "mkl~=2025.3.1",
+    "mkl-devel~=2025.3.1",
+    "mkl-include~=2025.3.1",
+    "meson-python~=0.19.0",
+    "ninja~=1.13.0",
+    "Cython~=3.2.4",
+    "pythran~=0.18.1",
+    "pybind11~=3.0.1",
+]
+
+[tool.uv]
+no-binary-package = ["numpy", "scipy"] # force source build to link mkl
+no-build-isolation-package = ["numpy", "scipy"]
+
+[tool.uv.config-settings-package.numpy]
+setup-args = ["-Dblas=mkl", "-Dlapack=mkl"]
+
+[tool.uv.config-settings-package.scipy]
+setup-args = ["-Dblas=mkl", "-Dlapack=mkl"]
