@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - pyproject.toml
+      - .github/workflows/ci.yml
+      - .hadolint.yaml
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint Dockerfile with hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          config: .hadolint.yaml
+
+  build-and-verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu_version: ["22.04", "24.04"]
+        python_version: ["3.12", "3.13"]
+
+    name: Ubuntu ${{ matrix.ubuntu_version }} / Python ${{ matrix.python_version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: mkl-starter-kit:test
+          build-args: |
+            UBUNTU_VERSION=${{ matrix.ubuntu_version }}
+            PYTHON_VERSION=${{ matrix.python_version }}
+          cache-from: type=gha,scope=build-${{ matrix.ubuntu_version }}-${{ matrix.python_version }}
+          cache-to: type=gha,mode=max,scope=build-${{ matrix.ubuntu_version }}-${{ matrix.python_version }}
+
+      - name: Verify MKL linkage
+        run: |
+          docker run --rm mkl-starter-kit:test uv run python -c "
+          import sys
+          import numpy as np
+          import scipy
+
+          numpy_cfg = str(np.show_config(mode='dicts'))
+          scipy_cfg = str(scipy.show_config(mode='dicts'))
+
+          ok = True
+          if 'mkl' not in numpy_cfg.lower():
+              print('FAIL: NumPy is NOT linked to MKL')
+              print(numpy_cfg)
+              ok = False
+          else:
+              print('OK: NumPy is linked to MKL')
+
+          if 'mkl' not in scipy_cfg.lower():
+              print('FAIL: SciPy is NOT linked to MKL')
+              print(scipy_cfg)
+              ok = False
+          else:
+              print('OK: SciPy is linked to MKL')
+
+          sys.exit(0 if ok else 1)
+          "
